@@ -1,85 +1,62 @@
-##HERE IT'S STARTED
-Framing your project around the Model Context Protocol (MCP) is a brilliant move. MCP is essentially the "USB-C standard" for AI—an open protocol that standardizes how LLMs (like Claude or local models) connect to external tools and data sources.
+<div align="center">
+  <svg width="400" height="100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="400" height="100" rx="15" fill="#1e1e1e"/>
+    <circle cx="50" cy="50" r="30" fill="#4CAF50" />
+    <path d="M50 30 L65 60 L35 60 Z" fill="#ffffff" />
+    <text x="100" y="60" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">SourceSleuth</text>
+    <text x="100" y="80" font-family="Arial, sans-serif" font-size="14" fill="#aaaaaa">Local MCP Context Engine</text>
+  </svg>
 
-Instead of building a standalone web app with a custom frontend, we will architect SourceSleuth as a modular MCP Server. This means students can use their existing AI interfaces (like Claude Desktop or Cursor) to directly query their local PDFs.
+  <br>
 
-Here is how the SourceSleuth problem statement and architecture translate into strict MCP terms, aligning perfectly with your open-source hackathon guidelines.
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.10+-yellow.svg" alt="Python"></a>
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-Enabled-brightgreen.svg" alt="MCP"></a>
+</div>
 
-1. The Architecture in MCP Terms
-In the MCP ecosystem, the system is broken down into three components. Emphasis should be placed on modular architecture, so that contributors can improve individual components without needing to understand the entire codebase.
+---
 
-The MCP Host (The Frontend): The student's AI application (e.g., Claude Desktop, Windsurf, or an IDE). We don't build this; we integrate with it.
+## What is this project?
+SourceSleuth is a local-first Model Context Protocol (MCP) server that connects your favorite AI assistants (like Claude Desktop) directly to your local academic PDFs. 
 
-The MCP Client: The built-in protocol handler within the Host that formats the student's requests.
+## Why should I care?
+College students frequently encounter the "orphaned quote" crisis: having a perfectly paraphrased concept in their draft but losing the original source document and page number. SourceSleuth solves this by using local semantic search to instantly locate the exact document, page, and surrounding paragraph of any orphaned text, eliminating hours of manual re-reading.
 
-The MCP Server (Our Hackathon Project): A local, lightweight Python server that manages the PDF embeddings and exposes them to the Host securely.
+##  Architecture Diagram
+*How the MCP integration works under the hood:*
 
-2. The Core MCP Capabilities
-An MCP Server communicates with the Host by exposing three specific types of capabilities. Here is what SourceSleuth will expose:
+<div align="center">
+  <svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="50" width="120" height="100" rx="10" fill="#2d3748"/>
+    <text x="70" y="100" fill="#fff" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold">Claude Desktop</text>
+    <text x="70" y="120" fill="#cbd5e0" font-family="Arial" font-size="12" text-anchor="middle">(MCP Host)</text>
+    <path d="M130 100 L230 100" stroke="#4a5568" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <text x="175" y="85" fill="#a0aec0" font-family="Arial" font-size="12" text-anchor="middle">JSON-RPC</text>
+    <rect x="230" y="50" width="140" height="100" rx="10" fill="#2b6cb0"/>
+    <text x="300" y="95" fill="#fff" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold">SourceSleuth</text>
+    <text x="300" y="115" fill="#e2e8f0" font-family="Arial" font-size="12" text-anchor="middle">(MCP Server)</text>
+    <path d="M370 100 L470 100" stroke="#4a5568" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <rect x="470" y="50" width="120" height="100" rx="10" fill="#2f855a"/>
+    <text x="530" y="95" fill="#fff" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold">Local Vector DB</text>
+    <text x="530" y="115" fill="#c6f6d5" font-family="Arial" font-size="12" text-anchor="middle">(MiniLM Embeddings)</text>
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#4a5568"/>
+      </marker>
+    </defs>
+  </svg>
+</div>
 
-Resources (Context): MCP Resources expose static or dynamic data. Our server will expose file://student_pdfs/{filename} as a resource, allowing the AI model to read the raw text of any specific academic paper on the student's hard drive if it needs deeper context.
+## Features
+* **Zero-API-Cost Semantic Search:** Runs entirely locally using HuggingFace's `sentence-transformers`.
+* **MCP Tool Integration:** Exposes the `find_orphaned_quote` tool directly to your AI client.
+* **Privacy-First:** Your unpublished thesis and copyrighted textbooks never leave your hard drive.
 
-Tools (Actions): Tools are executable functions the AI can trigger. We will expose find_orphaned_quote(quote_text). When the student asks the AI, "Where did I get this quote?", the AI autonomously triggers this tool, which runs our local SentenceTransformer model to perform the vector search.
+##  How do I get it running?
+*Installation in under 5 minutes.*
 
-Prompts (Workflows): We will expose a predefined prompt called cite_recovered_source. This tells the LLM exactly how to format the recovered text into a strict APA or MLA citation, saving the user from writing complex prompts.
-
-3. Aligning with Hackathon AI/ML Requirements
-Building an MCP server doesn't exempt us from the scientific rigor of the AI/ML track. The data used, model choices, and training methodology must all be documented for a project to be reproducible the sine qua non of scientific open source work.
-
-Dataset & Preprocessing: The README.md must document how the local PDFs are chunked (e.g., 500-token chunks with 50-token overlap) before embedding.
-
-Model Architecture Documentation: We must document the reasoning behind choosing a lightweight model like all-MiniLM-L6-v2—specifically, that it runs efficiently on a student's CPU, keeping the MCP Server fast and entirely local for privacy.
-
-4. Code Blueprint: The MCP Server (v1.0)
-Using modern Python MCP SDKs (like FastMCP), building the server is highly declarative. This is the code contributors will interact with.
-
-Python
-
-# src/mcp_server.py
-from mcp.server.fastmcp import FastMCP
-from sentence_transformers import SentenceTransformer
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-
-# Initialize the MCP Server
-mcp = FastMCP("SourceSleuth")
-
-# Load our local embedding model (Documented in README per hackathon rules)
-model = SentenceTransformer('all-MiniLM-L6-v2')
-document_embeddings = [] # Loaded from local vector store in a real app
-document_metadata = []
-
-@mcp.tool()
-def find_orphaned_quote(quote: str, top_k: int = 3) -> str:
-    """
-    Tool for the LLM to find the original academic source for an orphaned quote.
-    
-    Args:
-        quote (str): The text or paraphrase the student wrote.
-        top_k (int): The number of matches to return.
-    """
-    if not document_embeddings:
-        return "Error: No PDFs have been ingested into the vector store yet."
-
-    # 1. Embed the student's orphaned quote
-    quote_embedding = model.encode([quote])
-    
-    # 2. Calculate cosine similarity against all PDF chunks
-    similarities = cosine_similarity(quote_embedding, document_embeddings)[0]
-    top_indices = np.argsort(similarities)[-top_k:][::-1]
-    
-    # 3. Format the response for the LLM to read and present to the user
-    response = "Found the following potential sources:\n\n"
-    for idx in top_indices:
-        meta = document_metadata[idx]
-        score = round(float(similarities[idx]), 4)
-        response += f"- Document: {meta['filename']}, Page {meta['page']} (Confidence: {score})\n"
-        response += f"  Context: \"{meta['text']}\"\n\n"
-        
-    return response
-
-if __name__ == "__main__":
-    # Runs the server over standard input/output (stdio), which is how 
-    # MCP Hosts like Claude Desktop communicate with local servers.
-    mcp.run()
-By framing the project this way, you are solving a highly specific student crisis while utilizing the absolute cutting-edge of AI interoperability standards.
+1. **Clone & Install Dependencies:**
+   ```bash
+   git clone [https://github.com/yourusername/sourcesleuth.git](https://github.com/yourusername/sourcesleuth.git)
+   cd sourcesleuth
+   pip install -r requirements.txt
