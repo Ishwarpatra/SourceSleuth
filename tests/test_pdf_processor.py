@@ -1,9 +1,8 @@
-"""Tests for the PDF Processor module."""
 
 import tempfile
 from pathlib import Path
 
-import fitz  # PyMuPDF
+import fitz 
 import pytest
 
 from src.pdf_processor import (
@@ -13,10 +12,6 @@ from src.pdf_processor import (
     process_pdf_directory,
 )
 
-
-# ──────────────────────────────────────────────────────────────
-# Fixtures
-# ──────────────────────────────────────────────────────────────
 
 def _create_test_pdf(path: Path, pages: list[str]) -> Path:
     """Helper: create a minimal PDF with the given text on each page."""
@@ -52,9 +47,6 @@ def pdf_directory(tmp_path):
     return tmp_path
 
 
-# ──────────────────────────────────────────────────────────────
-# Tests: TextChunk
-# ──────────────────────────────────────────────────────────────
 
 class TestTextChunk:
     def test_to_dict_round_trip(self):
@@ -72,10 +64,6 @@ class TestTextChunk:
         assert reconstructed.page == chunk.page
 
 
-# ──────────────────────────────────────────────────────────────
-# Tests: Extraction
-# ──────────────────────────────────────────────────────────────
-
 class TestExtractText:
     def test_extract_basic(self, sample_pdf):
         doc = extract_text_from_pdf(sample_pdf)
@@ -92,10 +80,6 @@ class TestExtractText:
         for i in range(1, len(doc.page_spans)):
             assert doc.page_spans[i].start_char == doc.page_spans[i - 1].end_char
 
-
-# ──────────────────────────────────────────────────────────────
-# Tests: Chunking
-# ──────────────────────────────────────────────────────────────
 
 class TestChunking:
     def test_chunk_produces_output(self, sample_pdf):
@@ -118,8 +102,6 @@ class TestChunking:
         assert len(small_chunks) >= len(big_chunks)
 
     def test_empty_text_returns_no_chunks(self, tmp_path):
-        """A PDF with no extractable text should produce zero chunks."""
-        # Create a PDF with a blank page
         doc = fitz.open()
         doc.new_page()
         pdf_path = tmp_path / "blank.pdf"
@@ -131,9 +113,6 @@ class TestChunking:
         assert chunks == []
 
 
-# ──────────────────────────────────────────────────────────────
-# Tests: Batch Processing
-# ──────────────────────────────────────────────────────────────
 
 class TestBatchProcessing:
     def test_process_directory(self, pdf_directory):

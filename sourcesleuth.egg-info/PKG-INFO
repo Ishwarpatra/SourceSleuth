@@ -1,3 +1,34 @@
+Metadata-Version: 2.4
+Name: sourcesleuth
+Version: 1.0.0
+Summary: An MCP server that helps students recover citations for orphaned quotes by performing semantic search across local academic PDFs.
+Author: SourceSleuth Contributors
+License: MIT
+Keywords: mcp,citations,pdf,semantic-search,academic
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Education
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Education
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: mcp[cli]>=1.2.0
+Requires-Dist: sentence-transformers>=3.0.0
+Requires-Dist: PyMuPDF>=1.24.0
+Requires-Dist: faiss-cpu>=1.8.0
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: scikit-learn>=1.4.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Dynamic: license-file
+
 # 🔍 SourceSleuth
 
 > **Recover citations for orphaned quotes using local semantic search — powered by MCP.**
@@ -24,7 +55,6 @@ Everything runs **locally on your machine** — no data leaves your laptop, no A
 |---|---|---|
 | `find_orphaned_quote` | 🔧 Tool | Semantic search across all your PDFs for a quote or paraphrase |
 | `ingest_pdfs` | 🔧 Tool | Batch-ingest a folder of PDFs into the local vector store |
-| `ingest_arxiv` | 🔧 Tool | Preprocess & ingest arXiv paper abstracts for citation recovery |
 | `get_store_stats` | 🔧 Tool | View statistics about indexed documents |
 | `sourcesleuth://pdfs/{filename}` | 📄 Resource | Read the full text of any indexed PDF |
 | `cite_recovered_source` | 💬 Prompt | Format recovered sources into proper APA/MLA/Chicago citations |
@@ -57,7 +87,6 @@ Everything runs **locally on your machine** — no data leaves your laptop, no A
 | `src/mcp_server.py` | FastMCP server — exposes tools, resources, and prompts |
 | `src/pdf_processor.py` | PDF text extraction (PyMuPDF) and chunking |
 | `src/vector_store.py` | FAISS index management, embedding, persistence |
-| `src/dataset_preprocessor.py` | arXiv metadata preprocessing, LaTeX cleaning, filtering |
 
 ---
 
@@ -141,8 +170,6 @@ Then:
 
 ### Dataset & Preprocessing
 
-#### PDF Pipeline
-
 | Parameter | Value | Rationale |
 |---|---|---|
 | **Input data** | Student's local PDF files | Privacy-first: no data leaves the machine |
@@ -150,17 +177,6 @@ Then:
 | **Chunk size** | 500 tokens (~2,000 chars) | Balances granularity (finding specific quotes) with context (retaining surrounding text) |
 | **Chunk overlap** | 50 tokens (~200 chars) | Ensures sentences split at chunk boundaries remain recoverable |
 | **Token estimation** | ~4 chars/token | Approximation for English academic text |
-
-#### arXiv Metadata Pipeline
-
-| Parameter | Value | Rationale |
-|---|---|---|
-| **Source** | [Kaggle arXiv Dataset](https://www.kaggle.com/Cornell-University/arxiv) | ~2.97M papers, comprehensive academic coverage |
-| **Raw size** | ~5 GB (JSON-Lines) | One JSON object per line, memory-efficient streaming |
-| **Processing** | Stream-read, line-by-line | Never loads full file into memory |
-| **Text cleaning** | Strip LaTeX (`\textbf`, `$...$`, accents) | Produces clean text suitable for embedding |
-| **Filtering** | By arXiv category prefix (e.g. `cs.`) and/or date | Creates focused, manageable subsets |
-| **Output** | Cleaned JSON-Lines file | Each record: id, title, authors, abstract, categories, doi |
 
 ### Model Architecture
 
@@ -236,15 +252,13 @@ sourcesleuth/
 │   ├── __init__.py              # Package init
 │   ├── mcp_server.py            # MCP server (tools, resources, prompts)
 │   ├── pdf_processor.py         # PDF extraction & chunking
-│   ├── vector_store.py          # FAISS vector store
-│   └── dataset_preprocessor.py  # arXiv metadata preprocessing
+│   └── vector_store.py          # FAISS vector store
 ├── student_pdfs/                # Your PDF files go here
-├── data/                        # Persisted vector store + arXiv dataset
+├── data/                        # Persisted vector store
 ├── tests/
 │   ├── test_pdf_processor.py    # PDF processor tests
 │   ├── test_vector_store.py     # Vector store tests
-│   ├── test_mcp_server.py       # MCP tool tests
-│   └── test_dataset_preprocessor.py  # Preprocessor tests
+│   └── test_mcp_server.py       # MCP tool tests
 ├── pyproject.toml               # Project config & dependencies
 ├── requirements.txt             # Pip requirements
 ├── README.md                    # This file

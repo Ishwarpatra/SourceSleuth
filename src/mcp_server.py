@@ -26,10 +26,15 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from src.pdf_processor import (
+    TextChunk,
     extract_text_from_pdf,
     process_pdf_directory,
 )
 from src.vector_store import VectorStore
+from src.dataset_preprocessor import (
+    preprocess_dataset,
+    stream_arxiv_records,
+)
 
 # ──────────────────────────────────────────────────────────────
 # Logging
@@ -56,8 +61,7 @@ DATA_DIR = Path(os.environ.get("SOURCESLEUTH_DATA_DIR", str(PROJECT_ROOT / "data
 
 mcp = FastMCP(
     "SourceSleuth",
-    version="1.0.0",
-    description=(
+    instructions=(
         "A local MCP server that helps students recover citations "
         "for orphaned quotes by semantically searching their academic PDFs."
     ),
@@ -73,10 +77,8 @@ else:
     logger.info("Starting with an empty vector store.")
 
 
-# ══════════════════════════════════════════════════════════════
-#  MCP TOOLS
-# ══════════════════════════════════════════════════════════════
 
+#  MCP TOOLS
 @mcp.tool()
 def find_orphaned_quote(quote: str, top_k: int = 5) -> str:
     """
@@ -107,18 +109,18 @@ def find_orphaned_quote(quote: str, top_k: int = 5) -> str:
         return "No matching sources found for the given text."
 
     response_parts = [
-        f"🔍 **Found {len(results)} potential source(s)** for your quote:\n"
+        f"**Found {len(results)} potential source(s)** for your quote:\n"
     ]
 
     for i, result in enumerate(results, start=1):
         score = result["score"]
         # Determine confidence tier
         if score >= 0.75:
-            badge = "🟢 High"
+            badge = "High"
         elif score >= 0.50:
-            badge = "🟡 Medium"
+            badge = "Medium"
         else:
-            badge = "🔴 Low"
+            badge = "Low"
 
         context_preview = result["text"][:300].replace("\n", " ")
         if len(result["text"]) > 300:
@@ -195,14 +197,14 @@ def get_store_stats() -> str:
 
     if stats["total_chunks"] == 0:
         return (
-            "📊 **Vector Store Status**: Empty\n\n"
+            " **Vector Store Status**: Empty\n\n"
             "No PDFs have been ingested yet. Use `ingest_pdfs` to get started."
         )
 
     files_list = "\n".join(f"  - `{f}`" for f in stats["ingested_files"])
 
     return (
-        f"📊 **Vector Store Statistics**\n\n"
+        f"**Vector Store Statistics**\n\n"
         f"- **Total chunks**: {stats['total_chunks']}\n"
         f"- **Number of files**: {stats['num_files']}\n"
         f"- **Embedding model**: `{stats['model_name']}`\n"
@@ -212,9 +214,97 @@ def get_store_stats() -> str:
     )
 
 
-# ══════════════════════════════════════════════════════════════
+@mcp.tool()
+def ingest_arxiv(
+    category_prefix: str = "cs.",
+    max_records: int = 5000,
+) -> str:
+    """
+    Preprocess and ingest arXiv paper abstracts into the vector store.
+
+    Reads the arXiv metadata snapshot, filters by category, cleans the
+    text, and embeds the title+abstract of each paper for semantic search.
+    This lets students search across millions of academic paper abstracts
+    to find the source of an orphaned quote.
+
+    Args:
+        category_prefix: arXiv category prefix to filter by (e.g. "cs."
+                         for all Computer Science papers, "physics." for
+                         Physics). Default is "cs." for CS papers.
+        max_records: Maximum number of papers to ingest. Start small
+                     (1000-5000) for quick tests; increase for thorough
+                     searches. Default is 5000.
+
+    Returns:
+        A summary of how many arXiv records were preprocessed and ingested.
+    """
+    raw_path = DATA_DIR / "arxiv-metadata-oai-snapshot.json"
+    if not raw_path.exists():
+        return (
+            "❌ arXiv dataset not found.\n\n"
+            f"Expected file at: `{raw_path}`\n"
+            "Download it from: https://www.kaggle.com/Cornell-University/arxiv"
+        )
+
+    # Step 1: Preprocess
+    preprocessed_path = DATA_DIR / "arxiv_preprocessed.jsonl"
+    logger.info(
+        "Preprocessing arXiv dataset (prefix=%s, max=%d) …",
+        category_prefix, max_records,
+    )
+
+    prefixes = {p.strip() for p in category_prefix.split(",") if p.strip()}
+    stats = preprocess_dataset(
+        input_path=raw_path,
+        output_path=preprocessed_path,
+        category_prefix_filter=prefixes,
+        max_records=max_records,
+    )
+
+    # Step 2: Convert to TextChunks and ingest
+    chunks = []
+    for record in stream_arxiv_records(
+        preprocessed_path,
+        max_records=max_records,
+    ):
+        # Use title + abstract as the searchable text
+        text = f"{record.title}. {record.abstract}"
+        chunk = TextChunk(
+            text=text,
+            filename=f"arxiv:{record.arxiv_id}",
+            page=0,  # arXiv papers don't have page numbers here
+            chunk_index=0,
+            start_char=0,
+            end_char=len(text),
+        )
+        chunks.append(chunk)
+
+    if not chunks:
+        return "⚠️ No arXiv records matched the filter criteria."
+
+    added = store.add_chunks(chunks)
+    store.save()
+
+    # Top categories from stats
+    top_cats = sorted(
+        stats.categories_seen.items(), key=lambda x: -x[1]
+    )[:10]
+    cats_str = ", ".join(f"{cat} ({n})" for cat, n in top_cats)
+
+    return (
+        f"✅ **arXiv Ingestion Complete!**\n\n"
+        f"- **Records preprocessed**: {stats.records_output:,}\n"
+        f"- **Chunks added to store**: {added:,}\n"
+        f"- **Total chunks in store**: {store.total_chunks:,}\n"
+        f"- **Category filter**: `{category_prefix}`\n"
+        f"- **Top categories**: {cats_str}\n"
+        f"- **Preprocessing time**: {stats.elapsed_seconds:.1f}s\n\n"
+        f"You can now use `find_orphaned_quote` to search across "
+        f"both your PDFs and arXiv papers."
+    )
+
+
 #  MCP RESOURCES
-# ══════════════════════════════════════════════════════════════
 
 @mcp.resource("sourcesleuth://pdfs/{filename}")
 def get_pdf_text(filename: str) -> str:

@@ -1,55 +1,169 @@
 # Contributing to SourceSleuth
 
-First off, thank you for considering contributing to SourceSleuth! It's people like you that make open-source educational tools possible. 
+Thank you for your interest in contributing to SourceSleuth! This document provides guidelines and instructions for contributing.
 
-Please take a moment to review this document in order to make the contribution process easy and effective for everyone involved.
+---
 
-## Code of Conduct
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md). Please report any unacceptable behavior to the project maintainers.
+## 🚀 Getting Started
 
-## How to Contribute
+### 1. Fork & Clone
+
+```bash
+git clone https://github.com/your-username/sourcesleuth.git
+cd sourcesleuth
+```
+
+### 2. Set Up Your Development Environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate    # Linux/macOS
+.venv\Scripts\activate       # Windows
+
+pip install -e ".[dev]"
+```
+
+### 3. Run the Tests
+
+```bash
+pytest -v
+```
+
+Make sure all tests pass before making changes.
+
+---
+
+## 📋 How to Contribute
 
 ### Reporting Bugs
-If you find a bug, please open an issue using the "Bug Report" template. Include:
-* Your operating system and Python version.
-* The exact steps to reproduce the issue.
-* Any relevant error logs or tracebacks.
 
-### Suggesting Enhancements
-Have an idea for a new feature (like integrating a new embedding model or adding OCR support)? Open an issue using the "Feature Request" template. Explain the problem your feature solves and propose a potential solution.
+- Open a GitHub Issue with the **Bug Report** template.
+- Include: steps to reproduce, expected behavior, actual behavior, and your environment (OS, Python version).
 
-### First Contribution Guide
-If you are new to the project, look for issues labeled `good first issue` or `help wanted`. These are specifically curated to be approachable. If you want to work on one, simply comment "I'd like to work on this!" and we will assign it to you.
+### Suggesting Features
 
-## Development Setup
-To set up your local development environment:
+- Open a GitHub Issue with the **Feature Request** template.
+- Describe the use case and why it would benefit students.
 
-1. Fork the repository and clone your fork locally.
-2. Ensure you have Python 3.10+ installed.
-3. Create a virtual environment: `python -m venv venv`
-4. Activate it: `source venv/bin/activate` (Linux/Mac) or `venv\Scripts\activate` (Windows)
-5. Install development dependencies: `pip install -r requirements-dev.txt`
+### Submitting Code
 
-## Coding Standards
-* **Formatting:** We use `black` for code formatting. Run `black .` before committing.
-* **Linting:** We use `flake8`. Ensure your code passes by running `flake8 src/`.
-* **Typing:** Use Python type hints for all function arguments and return types.
+1. **Create a branch**: `git checkout -b feature/your-feature-name`
+2. **Make your changes** following the code style guidelines below.
+3. **Write tests** for any new functionality.
+4. **Run the tests**: `pytest -v`
+5. **Run the linter**: `ruff check src/ tests/`
+6. **Commit** with a clear message: `git commit -m "feat: add DOCX ingestion support"`
+7. **Push & open a Pull Request** against `main`.
 
-## Branch Naming Conventions
-Please use the following conventions when creating a branch:
-* `feature/your-feature-name` for new features.
-* `bugfix/issue-description` for bug fixes.
-* `docs/update-description` for documentation updates.
+---
 
-## Commit Message Format
-We follow [Conventional Commits](https://www.conventionalcommits.org/). This helps us auto-generate changelogs.
-* `feat: added PyPDF2 extraction logic`
-* `fix: resolved tensor shape mismatch in embeddings`
-* `docs: updated architecture diagram in README`
+## 🎨 Code Style
 
-## Pull Request Process
-1. Push your branch to your fork.
-2. Open a Pull Request against the `main` branch of the upstream repository.
-3. Ensure all CI/CD checks (linting, tests) pass.
-4. A maintainer will review your code. We look for clean architecture, test coverage for new logic, and updated documentation.
-5. Once approved, the maintainer will merge your PR.
+- **Formatter/Linter**: We use [Ruff](https://docs.astral.sh/ruff/) for linting.
+- **Line length**: 100 characters max.
+- **Type hints**: Use type hints for all function signatures.
+- **Docstrings**: Use Google-style docstrings for all public functions and classes.
+- **Logging**: Use `logging.getLogger("sourcesleuth.<module>")` instead of `print()`.
+
+### Example
+
+```python
+def process_document(path: str | Path, chunk_size: int = 500) -> list[TextChunk]:
+    """
+    Process a single document into text chunks.
+
+    Args:
+        path: Path to the document file.
+        chunk_size: Target chunk size in tokens.
+
+    Returns:
+        A list of TextChunk objects ready for embedding.
+
+    Raises:
+        FileNotFoundError: If the document does not exist.
+    """
+    ...
+```
+
+---
+
+## 🏗️ Project Architecture
+
+Understanding the modular architecture helps you contribute to the right place:
+
+```
+src/
+├── mcp_server.py      ← MCP interface (tools, resources, prompts)
+├── pdf_processor.py   ← Text extraction & chunking logic
+└── vector_store.py    ← FAISS index & embedding management
+```
+
+- **Want to add a new MCP tool?** → Edit `mcp_server.py`
+- **Want to support a new file format?** → Edit `pdf_processor.py`
+- **Want to change the embedding/search strategy?** → Edit `vector_store.py`
+
+---
+
+## 🧪 Testing Guidelines
+
+- Place tests in the `tests/` directory.
+- Name test files as `test_<module>.py`.
+- Use `pytest` fixtures for shared setup.
+- Aim for tests that are **fast** (no network calls) and **deterministic**.
+- Use `tmp_path` fixture for temporary files.
+
+### Running Specific Tests
+
+```bash
+# All tests
+pytest
+
+# Single module
+pytest tests/test_pdf_processor.py -v
+
+# Single test
+pytest tests/test_vector_store.py::TestVectorStoreCore::test_search_relevance -v
+```
+
+---
+
+## 📝 Commit Message Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Prefix | Use For |
+|---|---|
+| `feat:` | New features |
+| `fix:` | Bug fixes |
+| `docs:` | Documentation changes |
+| `test:` | Adding or updating tests |
+| `refactor:` | Code changes that don't add features or fix bugs |
+| `chore:` | Maintenance tasks |
+
+---
+
+## 💡 Contribution Ideas
+
+Here are some areas where contributions are especially welcome:
+
+### 🟢 Good First Issues
+- Add input validation to tool arguments
+- Improve error messages for common failure modes
+- Add more citation styles (IEEE, Vancouver)
+
+### 🟡 Intermediate
+- Support EPUB and DOCX file formats
+- Add a `remove_pdf` tool to un-ingest a specific file
+- Implement chunk deduplication
+
+### 🔴 Advanced
+- Support alternative embedding models (configurable)
+- Implement approximate nearest neighbor search (IVF/HNSW) for large corpora
+- Add a `compare_quotes` tool for plagiarism-style comparison
+- Build a CLI for non-MCP usage
+
+---
+
+## 📜 License
+
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
