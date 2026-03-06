@@ -4,9 +4,10 @@ SourceSleuth aims to become the definitive local, privacy-first context engine f
 
 ## Current State: v1.0 (Hackathon Release)
 Currently, SourceSleuth provides the core foundational features needed to solve the "orphaned quote" crisis:
-* **Local Ingestion Script:** Python-based CLI tool to parse `.pdf` files using `PyPDF2` and chunk text.
-* **Semantic Search Engine:** In-memory vector matching using HuggingFace's `all-MiniLM-L6-v2` embedding model and scikit-learn cosine similarity.
-* **MCP Integration:** A fully functional `FastMCP` server exposing the `find_orphaned_quote` tool to compatible hosts like Claude Desktop.
+* **Local Ingestion Script:** Python-based CLI tool to parse `.pdf` files using `PyMuPDF` (fitz) and chunk text with page-aware boundaries.
+* **Semantic Search Engine:** FAISS-backed vector matching using HuggingFace's `all-MiniLM-L6-v2` embedding model with exact cosine similarity search.
+* **MCP Integration:** A fully functional `FastMCP` server exposing the `find_orphaned_quote`, `ingest_pdfs`, and `get_store_stats` tools to compatible hosts like Claude Desktop.
+* **Persistent Vector Store:** FAISS index with JSON metadata persisted to disk for fast restarts without re-embedding.
 
 ## Planned Features (v1.1 - v2.0)
 We are actively planning the following features and tracking them via GitHub Issues and Milestones:
@@ -18,9 +19,10 @@ We are actively planning the following features and tracking them via GitHub Iss
 
 ## Known Technical Debt & Limitations
 To build this over a hackathon weekend, we made some trade-offs that we intend to fix:
-* **PDF Parsing Quality:** Currently, two-column academic papers sometimes chunk out of order. We need to implement a more robust layout-aware parser (e.g., `pdfplumber`).
-* **Math Formulas:** The current embedding model struggles with complex LaTeX/math formulas found in STEM papers. 
-* **Hardcoded Chunk Sizes:** Text chunking is currently hardcoded to 300 words. This needs to become configurable via a `.env` file.
+* **PDF Parsing Quality:** Two-column academic papers sometimes chunk out of order. PyMuPDF extracts text in reading order but doesn't handle complex layouts. We need to implement a more robust layout-aware parser (e.g., `pdfplumber`).
+* **Math Formulas:** The current embedding model (`all-MiniLM-L6-v2`) struggles with complex LaTeX/math formulas found in STEM papers.
+* **Chunk Sizes:** Text chunking is currently hardcoded to 500 tokens with 50-token overlap in the source code. This needs to become configurable via a `.env` file.
+* **Scanned Documents:** Image-based PDFs (scanned textbooks, older papers) return no text as OCR is not yet integrated.
 
 ## Call to Contributors
 We cannot build this alone! Here is where we need your help the most:
